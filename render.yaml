@@ -1,0 +1,10 @@
+services:
+  - name: your-app
+    type: web
+    buildCommand: go build -o app
+    startCommand: ./app
+    envVars:
+      - key: PORT
+        value: "7070"
+      - key: MONGO_URI
+        value: "mongodb+srv://testboy:shadow22@bemiho22.qq4js.mongodb.net/FASTER"

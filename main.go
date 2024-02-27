@@ -13,6 +13,8 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
 	"go.mongodb.org/mongo-driver/mongo"
+	swaggerFiles "github.com/swaggo/files"
+	ginSwagger "github.com/swaggo/gin-swagger"
 )
 
 var userCollection *mongo.Collection = database.OpenCollection(database.Client, "users")
@@ -37,7 +39,12 @@ func main() {
 
 	router.GET("/", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"success": "Wellcome to faster_moni"})
+		
 	})
+
+
+	//Serve the Swagger UI at the /swagger URL
+	router.GET("/swagger", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
 	userController := user.NewUserController(userService)
 	user.AuthRoutes(router, userController)
