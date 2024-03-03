@@ -9,6 +9,7 @@ import (
 	"os"
 
 	"github.com/gbubemi22/moni/src/database"
+	middleware "github.com/gbubemi22/moni/src/middlewarecheck"
 	"github.com/gbubemi22/moni/src/user"
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
@@ -47,6 +48,8 @@ func main() {
 
 	userController := user.NewUserController(userService)
 	user.AuthRoutes(router, userController)
+	router.NoRoute(middleware.NotFound())
+	router.Use(middleware.ErrorHandlerMiddleware())
 
 	router.Run(":" + port)
 }

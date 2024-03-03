@@ -2,6 +2,7 @@ package user
 
 import (
 	"context"
+
 	"log"
 	"net/http"
 	"time"
@@ -61,14 +62,14 @@ func (uc *UserController) Login(c *gin.Context) {
 	}
 
 	// Call the service to perform login
-	user, err := uc.UserService.Login(context.Background(), email, password)
+	user, token, err := uc.UserService.Login(context.Background(), email, password)
 	if err != nil {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
 		return
 	}
 
 	// Successful login
-	c.JSON(http.StatusOK, gin.H{"message": "Login successful", "user": user})
+	c.JSON(http.StatusOK, gin.H{"message": "Login successful", "user": user, "token": token})
 }
 
 // Handler for getting a user by ID

@@ -3,8 +3,12 @@ package user
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log"
+	"os"
+	"time"
 
+	"github.com/golang-jwt/jwt/v4"
 	"go.mongodb.org/mongo-driver/bson"
 	//"go.mongodb.org/mongo-driver/mongo"
 )
@@ -17,6 +21,37 @@ func NewUserService(userRepository *UserRepository) *UserService {
 	return &UserService{
 		UserRepository: userRepository,
 	}
+}
+
+type SignedDetails struct {
+	Email      string
+	// First_name string
+	// Last_name  string
+	// Phone      string
+	// User_type  string
+	jwt.RegisteredClaims
+}
+
+func (us *UserService) GenerateToken(email string) (string, error) {
+	signedDetails := &SignedDetails{
+		Email:      email,
+		// First_name: firstName,
+		// Last_name:  lastName,
+		// Phone:      phone,
+		// User_type:  userType,
+		RegisteredClaims: jwt.RegisteredClaims{
+			ExpiresAt: jwt.NewNumericDate(time.Now().Local().Add(time.Hour * time.Duration(24))),
+		},
+	}
+
+	var SECRET_KEY string = os.Getenv("SECRET_KEY")
+	token, err := jwt.NewWithClaims(jwt.SigningMethodHS256, signedDetails).SignedString([]byte(SECRET_KEY))
+	if err != nil {
+		log.Printf("Error generating token: %v", err)
+		return "", err
+	}
+
+	return token, nil
 }
 
 func (us *UserService) CreateUser(ctx context.Context, user *User) error {
@@ -52,25 +87,41 @@ func (us *UserService) CreateUser(ctx context.Context, user *User) error {
 	// Call the repository to create the user
 	return us.UserRepository.CreateUser(ctx, user)
 }
-
-func (us *UserService) Login(ctx context.Context, email, password string) (*User, error) {
+func (us *UserService) Login(ctx context.Context, email, password string) (*User, string, error) {
 	// Get the user by email
 	user, err := us.UserRepository.GetUserByEmail(ctx, email)
+	fmt.Println("Check:::", user)
 	if err != nil {
-		log.Printf("Error getting user by email: %v", err)
-		return nil, errors.New("invalid email or password")
+	    log.Printf("Error getting user by email: %v", err)
+	    return nil, "", errors.New("invalid email or password")
 	}
-
+  
+	if user == nil {
+	    return nil, "", errors.New("user not found")
+	}
+  
+	
+  
 	// Compare the provided password with the hashed password in the database
+	if user.Password == nil || *user.Password == "" {
+	    return nil, "", errors.New("user password is empty or nil")
+	}
+  
 	check, msg := VerifyPassword(*user.Password, password)
 	if !check {
-		return nil, errors.New(msg)
+	    return nil, "", errors.New(msg)
 	}
-
+  
+	token, err := us.GenerateToken(*user.Email)
+	if err != nil {
+	    log.Printf("Error generating tokens: %v", err)
+	    return nil, "", errors.New("failed to generate tokens")
+	}
+  
 	// Passwords match, login successful
-	return user, nil
-}
-
+	return user, token, nil
+  }
+  
 func (us *UserService) GetUserByID(ctx context.Context, userID string) (*User, error) {
 	// Call the repository to get the user by ID
 	return us.UserRepository.GetUserByID(ctx, userID)
@@ -109,19 +160,16 @@ func (us *UserService) ListAllUsers(ctx context.Context) ([]*User, error) {
 	return users, nil
 }
 
-
 func (us *UserService) ListOne(ctx context.Context, userId string) (*User, error) {
 	user, err := us.UserRepository.ListOne(ctx, userId)
-  
+
 	if err != nil {
-	    return nil, err
+		return nil, err
 	}
-  
-	
+
 	if user == nil {
-	    return nil, errors.New("user not found")
+		return nil, errors.New("user not found")
 	}
-  
+
 	return user, nil
-  }
-  
+}

@@ -2,6 +2,8 @@ package user
 
 import (
 	"context"
+	"errors"
+	"fmt"
 
 	"time"
 
@@ -57,9 +59,16 @@ func (ur *UserRepository) DeleteUser(ctx context.Context, userID string) error {
 func (ur *UserRepository) GetUserByEmail(ctx context.Context, email string) (*User, error) {
 	var user User
 	err := ur.Collection.FindOne(ctx, bson.M{"email": email}).Decode(&user)
+
 	if err != nil {
+		// Check if the error is due to no documents found
+		if errors.Is(err, mongo.ErrNoDocuments) {
+			return nil, fmt.Errorf("user with email '%s' not found", email)
+		}
 		return nil, err
 	}
+	fmt.Println("CHECK@@@@@@@",user)
+
 	return &user, nil
 }
 
